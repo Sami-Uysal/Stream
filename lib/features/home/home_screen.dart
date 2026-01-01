@@ -25,12 +25,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   late Future<List<TmdbMedia>> _primeFuture;
   late Future<List<TmdbMedia>> _trendingFuture;
 
+  final ScrollController _trendingScrollController = ScrollController();
+  final ScrollController _netflixScrollController = ScrollController();
+  final ScrollController _disneyScrollController = ScrollController();
+  final ScrollController _primeScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
     _pluginService.init();
-    // Initial fetch will happen in didChangeDependencies or build if we want it reactive
-    // But since initState is one-time, we'll call a fetch method that we can also call on refresh
+  }
+
+  @override
+  void dispose() {
+    _trendingScrollController.dispose();
+    _netflixScrollController.dispose();
+    _disneyScrollController.dispose();
+    _primeScrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -40,11 +52,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   void _fetchAllCatalogs() {
-    // Access provider state via ref (read is fine here if triggered by build/dependency change, 
-    // but better to watch in build or just read current state here since didChangeDependencies is called).
-    // Actually, to make it reactive to provider changes without full rebuild, we might just use ref.watch in build 
-    // but dealing with Futures in build is tricky.
-    // Let's grab current state.
     final localeState = ref.read(localeProvider);
     final region = localeState.region;
 
@@ -72,6 +79,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       MaterialPageRoute(
         builder: (context) => MovieDetailScreen(media: media),
       ),
+    );
+  }
+
+  void _scrollList(ScrollController controller, bool forward) {
+    final currentOffset = controller.offset;
+    final viewportWidth = MediaQuery.of(context).size.width;
+    final scrollAmount = viewportWidth * 0.8;
+    
+    final targetOffset = forward 
+        ? currentOffset + scrollAmount 
+        : currentOffset - scrollAmount;
+    
+    controller.animateTo(
+      targetOffset.clamp(0.0, controller.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
     );
   }
 
@@ -107,16 +130,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: CustomScrollView(
         slivers: [
           _buildSectionTitle(l10n.sectionTrending),
-          _buildHorizontalList(_trendingFuture, l10n),
+          _buildHorizontalList(_trendingFuture, l10n, _trendingScrollController),
 
           _buildSectionTitle('Netflix'),
-          _buildHorizontalList(_netflixFuture, l10n),
+          _buildHorizontalList(_netflixFuture, l10n, _netflixScrollController),
           
           _buildSectionTitle('Disney+'),
-          _buildHorizontalList(_disneyFuture, l10n),
+          _buildHorizontalList(_disneyFuture, l10n, _disneyScrollController),
           
           _buildSectionTitle('Amazon Prime Video'),
-          _buildHorizontalList(_primeFuture, l10n),
+          _buildHorizontalList(_primeFuture, l10n, _primeScrollController),
           
           const SliverToBoxAdapter(child: SizedBox(height: 50)),
         ],
@@ -139,7 +162,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHorizontalList(Future<List<TmdbMedia>> future, AppLocalizations l10n) {
+  Widget _buildHorizontalList(
+    Future<List<TmdbMedia>> future, 
+    AppLocalizations l10n,
+    ScrollController scrollController,
+  ) {
     return SliverToBoxAdapter(
       child: SizedBox(
         height: 250, 
@@ -157,18 +184,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             }
 
             final items = snapshot.data!;
-            return ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                return MediaCard(
-                  media: items[index],
-                  onTap: () => _openDetails(context, items[index]),
-                );
-              },
+            return Stack(
+              children: [
+                ListView.builder(
+                  controller: scrollController,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    return MediaCard(
+                      media: items[index],
+                      onTap: () => _openDetails(context, items[index]),
+                    );
+                  },
+                ),
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 40,
+                  child: _buildScrollButton(
+                    icon: Icons.chevron_left,
+                    onPressed: () => _scrollList(scrollController, false),
+                  ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 40,
+                  child: _buildScrollButton(
+                    icon: Icons.chevron_right,
+                    onPressed: () => _scrollList(scrollController, true),
+                  ),
+                ),
+              ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScrollButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          width: 40,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: icon == Icons.chevron_left ? Alignment.centerLeft : Alignment.centerRight,
+              end: icon == Icons.chevron_left ? Alignment.centerRight : Alignment.centerLeft,
+              colors: [
+                Colors.black87,
+                Colors.transparent,
+              ],
+            ),
+          ),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+          ),
         ),
       ),
     );

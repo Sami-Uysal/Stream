@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/features/home/home_screen.dart';
+import 'package:stream/features/search/search_screen.dart';
 import 'package:stream/features/library/library_screen.dart';
 import 'package:stream/features/settings/settings_screen.dart';
 import 'package:stream/core/theme/app_theme.dart';
@@ -57,7 +58,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   List<Widget> _buildPages(AppLocalizations l10n) {
     return <Widget>[
       const HomeScreen(),
-      Center(child: Text(l10n.navSearch)),
+      const SearchScreen(),
       const LibraryScreen(),
       const SettingsScreen(),
     ];

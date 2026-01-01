@@ -71,4 +71,24 @@ class TmdbService {
       return null;
     }
   }
+
+  Future<List<TmdbMedia>> search(String query) async {
+    try {
+      final response = await _dio.get(
+        '/search/multi',
+        queryParameters: {
+          'query': query,
+        },
+      );
+
+      final List results = response.data['results'];
+      return results
+          .where((item) => item['media_type'] == 'movie' || item['media_type'] == 'tv')
+          .map((item) => TmdbMedia.fromJson(item, item['media_type']))
+          .toList();
+    } catch (e) {
+      debugPrint('Error searching: $e');
+      return [];
+    }
+  }
 }
