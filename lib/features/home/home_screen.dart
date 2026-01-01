@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stream/core/services/tmdb_service.dart';
 import 'package:stream/core/services/plugin_service.dart';
 import 'package:stream/core/tmdb/tmdb_constants.dart';
 import 'package:stream/features/home/models/tmdb_media.dart';
 import 'package:stream/features/home/widgets/media_card.dart';
-import 'package:stream/features/plugins/models/stream_request.dart';
-import 'package:stream/features/plugins/models/stream_response.dart';
+import 'package:stream/core/providers/locale_provider.dart';
+import 'package:stream/features/details/movie_detail_screen.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   final TmdbService _tmdbService = TmdbService();
   final PluginService _pluginService = PluginService();
   
@@ -27,137 +28,66 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _pluginService.init();
+    // Initial fetch will happen in didChangeDependencies or build if we want it reactive
+    // But since initState is one-time, we'll call a fetch method that we can also call on refresh
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _fetchAllCatalogs();
   }
 
   void _fetchAllCatalogs() {
-    // Using TR specific logic implicitly via TmdbService defaults, 
-    // but explicit titles in UI.
+    // Access provider state via ref (read is fine here if triggered by build/dependency change, 
+    // but better to watch in build or just read current state here since didChangeDependencies is called).
+    // Actually, to make it reactive to provider changes without full rebuild, we might just use ref.watch in build 
+    // but dealing with Futures in build is tricky.
+    // Let's grab current state.
+    final localeState = ref.read(localeProvider);
+    final region = localeState.region;
+
     _netflixFuture = _tmdbService.getPlatformCatalog(
       providerId: TmdbConstants.providers['Netflix']!,
       type: 'movie',
+      region: region,
     );
     _disneyFuture = _tmdbService.getPlatformCatalog(
       providerId: TmdbConstants.providers['Disney+']!,
       type: 'tv',
+      region: region,
     );
     _primeFuture = _tmdbService.getPlatformCatalog(
       providerId: TmdbConstants.providers['Amazon Prime']!,
       type: 'movie',
+      region: region,
     );
     _trendingFuture = _tmdbService.getTrending();
   }
 
-  void _showStreamsModal(BuildContext context, TmdbMedia media) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+  void _openDetails(BuildContext context, TmdbMedia media) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MovieDetailScreen(media: media),
       ),
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Sources for ${media.title}',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
-                  ),
-                ),
-                Expanded(
-                  child: FutureBuilder<List<StreamResponse>>(
-                    future: _pluginService.getAllStreams(StreamRequest(
-                      type: media.type,
-                      ids: {'tmdb': media.id}, // In real app, fetch external IDs
-                      title: media.title,
-                      year: int.tryParse(media.releaseDate.split('-').first),
-                    )),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Searching all providers...', style: TextStyle(color: Colors.white70)),
-                            ],
-                          ),
-                        );
-                      }
-                      
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
-                      }
-
-                      final streams = snapshot.data ?? [];
-                      
-                      if (streams.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(Icons.search_off, size: 48, color: Colors.white54),
-                              const SizedBox(height: 16),
-                              const Text('No streams found.', style: TextStyle(color: Colors.white70)),
-                              TextButton(
-                                onPressed: () async {
-                                  // Temporary debug to install a plugin
-                                  await _pluginService.installPlugin('https://raw.githubusercontent.com/mowli/stream-plugins/main/test_plugin.js');
-                                  if (context.mounted) {
-                                    Navigator.pop(context);
-                                  }
-                                }, 
-                                child: const Text('Install Test Plugin (Debug)')
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        controller: scrollController,
-                        itemCount: streams.length,
-                        itemBuilder: (context, index) {
-                          final stream = streams[index];
-                          return ListTile(
-                            leading: const Icon(Icons.play_circle_fill, color: Colors.teal),
-                            title: Text(stream.name, style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(stream.description, style: const TextStyle(color: Colors.white70)),
-                            onTap: () {
-                               // Handle playing stream
-                               Navigator.pop(context);
-                               ScaffoldMessenger.of(context).showSnackBar(
-                                 SnackBar(content: Text('Playing: ${stream.url}')),
-                               );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch for changes to trigger rebuild/refetch
+    ref.listen(localeProvider, (previous, next) {
+      if (previous?.region != next.region || previous?.locale != next.locale) {
+        setState(() {
+          _fetchAllCatalogs();
+        });
+      }
+    });
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stream TR'),
+        title: const Text('Stream'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -171,13 +101,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: CustomScrollView(
         slivers: [
-          _buildSectionTitle('Trending in Turkey'),
+          _buildSectionTitle('Trending'),
           _buildHorizontalList(_trendingFuture),
 
-          _buildSectionTitle('Netflix Turkey'),
+          _buildSectionTitle('Netflix'),
           _buildHorizontalList(_netflixFuture),
           
-          _buildSectionTitle('Disney+ New Arrivals'),
+          _buildSectionTitle('Disney+'),
           _buildHorizontalList(_disneyFuture),
           
           _buildSectionTitle('Amazon Prime Video'),
@@ -229,7 +159,7 @@ class _HomeScreenState extends State<HomeScreen> {
               itemBuilder: (context, index) {
                 return MediaCard(
                   media: items[index],
-                  onTap: () => _showStreamsModal(context, items[index]),
+                  onTap: () => _openDetails(context, items[index]),
                 );
               },
             );

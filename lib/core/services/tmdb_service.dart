@@ -51,4 +51,24 @@ class TmdbService {
       return [];
     }
   }
+
+  Future<TmdbMedia?> getMovieDetails({
+    required int id,
+    String type = 'movie',
+    String? language,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '/$type/$id',
+        queryParameters: {
+          'append_to_response': 'external_ids,credits',
+          if (language != null) 'language': language,
+        },
+      );
+      return TmdbMedia.fromJson(response.data, type);
+    } catch (e) {
+      debugPrint('Error fetching details for $id: $e');
+      return null;
+    }
+  }
 }

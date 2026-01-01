@@ -1,23 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:stream/features/home/home_screen.dart';
-import 'core/theme/app_theme.dart';
+import 'package:stream/features/settings/settings_screen.dart';
+import 'package:stream/core/theme/app_theme.dart';
+import 'package:stream/core/providers/locale_provider.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
-  runApp(const StreamApp());
+  runApp(const ProviderScope(child: StreamApp()));
 }
 
-class StreamApp extends StatelessWidget {
+class StreamApp extends ConsumerWidget {
   const StreamApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // We can watch the locale here to rebuild the app on language change
+    // For now just passing it to material app if we had localization delegates set up
+    final localeState = ref.watch(localeProvider);
+
     return MaterialApp(
       title: 'Stream',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const MainScaffold(),
+      locale: localeState.locale,
+      // supportedLocales: const [Locale('en', 'US'), Locale('tr', 'TR')],
+      // localizationsDelegates: ... (If we added intl)
     );
   }
 }
@@ -32,7 +42,7 @@ class MainScaffold extends StatefulWidget {
 class _MainScaffoldState extends State<MainScaffold> {
   int _selectedIndex = 0;
 
-  void _onItemTapped(int index) {
+  void _onDestinationSelected(int index) {
     setState(() {
       _selectedIndex = index;
     });
@@ -42,7 +52,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     HomeScreen(),
     Center(child: Text('Search')),
     Center(child: Text('Library')),
-    Center(child: Text('Settings')),
+    SettingsScreen(),
   ];
 
   @override
@@ -51,13 +61,13 @@ class _MainScaffoldState extends State<MainScaffold> {
     final width = MediaQuery.of(context).size.width;
     final bool useNavigationRail = width >= 800;
 
-    return Scaffold(
-      body: Row(
-        children: [
-          if (useNavigationRail)
+    if (useNavigationRail) {
+      return Scaffold(
+        body: Row(
+          children: [
             NavigationRail(
               selectedIndex: _selectedIndex,
-              onDestinationSelected: _onItemTapped,
+              onDestinationSelected: _onDestinationSelected,
               labelType: NavigationRailLabelType.all,
               destinations: const [
                 NavigationRailDestination(
@@ -70,8 +80,8 @@ class _MainScaffoldState extends State<MainScaffold> {
                   label: Text('Search'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.library_books_outlined),
-                  selectedIcon: Icon(Icons.library_books),
+                  icon: Icon(Icons.video_library_outlined),
+                  selectedIcon: Icon(Icons.video_library),
                   label: Text('Library'),
                 ),
                 NavigationRailDestination(
@@ -81,38 +91,42 @@ class _MainScaffoldState extends State<MainScaffold> {
                 ),
               ],
             ),
-          Expanded(
-            child: _pages[_selectedIndex],
+            const VerticalDivider(thickness: 1, width: 1),
+            Expanded(
+              child: _pages[_selectedIndex],
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Scaffold(
+      body: _pages[_selectedIndex],
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _onDestinationSelected,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.video_library_outlined),
+            selectedIcon: Icon(Icons.video_library),
+            label: 'Library',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
-      bottomNavigationBar: useNavigationRail
-          ? null
-          : NavigationBar(
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: _onItemTapped,
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: 'Home',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.search),
-                  label: 'Search',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.library_books_outlined),
-                  selectedIcon: Icon(Icons.library_books),
-                  label: 'Library',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings),
-                  label: 'Settings',
-                ),
-              ],
-            ),
     );
   }
 }
