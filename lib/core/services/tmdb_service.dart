@@ -91,4 +91,62 @@ class TmdbService {
       return [];
     }
   }
+
+  /// Şu an vizyonda olan filmler
+  Future<List<TmdbMedia>> getNowPlaying({String region = TmdbConstants.defaultRegion}) async {
+    try {
+      final response = await _dio.get(
+        '/movie/now_playing',
+        queryParameters: {
+          'region': region,
+        },
+      );
+      final List results = response.data['results'];
+      return results.map((json) => TmdbMedia.fromJson(json, 'movie')).toList();
+    } catch (e) {
+      debugPrint('Error fetching now playing: $e');
+      return [];
+    }
+  }
+
+  /// Yakında gelecek filmler
+  Future<List<TmdbMedia>> getUpcoming({String region = TmdbConstants.defaultRegion}) async {
+    try {
+      final response = await _dio.get(
+        '/movie/upcoming',
+        queryParameters: {
+          'region': region,
+        },
+      );
+      final List results = response.data['results'];
+      return results.map((json) => TmdbMedia.fromJson(json, 'movie')).toList();
+    } catch (e) {
+      debugPrint('Error fetching upcoming: $e');
+      return [];
+    }
+  }
+
+  /// En çok oy alan içerikler
+  Future<List<TmdbMedia>> getTopRated({String type = 'movie'}) async {
+    try {
+      final response = await _dio.get('/$type/top_rated');
+      final List results = response.data['results'];
+      return results.map((json) => TmdbMedia.fromJson(json, type)).toList();
+    } catch (e) {
+      debugPrint('Error fetching top rated: $e');
+      return [];
+    }
+  }
+
+  /// Popüler içerikler
+  Future<List<TmdbMedia>> getPopular({String type = 'movie'}) async {
+    try {
+      final response = await _dio.get('/$type/popular');
+      final List results = response.data['results'];
+      return results.map((json) => TmdbMedia.fromJson(json, type)).toList();
+    } catch (e) {
+      debugPrint('Error fetching popular: $e');
+      return [];
+    }
+  }
 }

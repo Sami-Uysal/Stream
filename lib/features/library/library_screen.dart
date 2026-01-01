@@ -61,10 +61,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ],
                 ),
 
-                SliverToBoxAdapter(
-                  child: _buildStatisticsSection(libraryState, l10n),
-                ),
-
                 if (watchingItems.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
@@ -99,88 +95,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
-    );
-  }
-
-  Widget _buildStatisticsSection(LibraryState state, AppLocalizations l10n) {
-    final movieCount = state.items.where((i) => i.media.type == 'movie').length;
-    final tvCount = state.items.where((i) => i.media.type == 'tv').length;
-    final completedCount = state.getByStatus(LibraryStatus.completed).length;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          _buildStatCard(
-            icon: Icons.movie_outlined,
-            value: '$movieCount',
-            label: 'Film',
-            color: Colors.purple,
-          ),
-          const SizedBox(width: 12),
-          _buildStatCard(
-            icon: Icons.tv_outlined,
-            value: '$tvCount',
-            label: 'Dizi',
-            color: Colors.blue,
-          ),
-          const SizedBox(width: 12),
-          _buildStatCard(
-            icon: Icons.check_circle_outline,
-            value: '$completedCount',
-            label: 'Tamamlandı',
-            color: Colors.green,
-          ),
-          const SizedBox(width: 12),
-          _buildStatCard(
-            icon: Icons.bookmark,
-            value: '${state.items.length}',
-            label: 'Toplam',
-            color: Colors.tealAccent,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        decoration: BoxDecoration(
-          color: color.withAlpha(30),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withAlpha(50)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 11,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 

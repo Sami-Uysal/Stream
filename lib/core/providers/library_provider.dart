@@ -167,6 +167,11 @@ class LibraryNotifier extends Notifier<LibraryState> {
     await _saveToStorage();
   }
 
+  Future<void> clearAll() async {
+    state = state.copyWith(items: []);
+    await _saveToStorage();
+  }
+
   LibraryStatus? getStatus(int mediaId, String type) {
     final item = state.findItem(mediaId, type);
     return item?.status;

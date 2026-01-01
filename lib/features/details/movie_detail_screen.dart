@@ -4,6 +4,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/core/services/tmdb_service.dart';
 import 'package:stream/core/services/plugin_service.dart';
 import 'package:stream/core/providers/library_provider.dart';
+import 'package:stream/core/theme/app_theme.dart';
 import 'package:stream/features/home/models/tmdb_media.dart';
 import 'package:stream/core/services/image_service.dart';
 import 'package:stream/features/plugins/models/stream_request.dart';
@@ -38,26 +39,90 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.5,
-          minChildSize: 0.3,
-          maxChildSize: 0.9,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    l10n.sourcesFor(media.title),
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusRound)),
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.5,
+            minChildSize: 0.3,
+            maxChildSize: 0.9,
+            expand: false,
+            builder: (context, scrollController) {
+              return Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 12),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[700],
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
-                ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                          child: Image.network(
+                            ImageService.getPosterUrl(
+                              posterPath: media.posterPath,
+                              tmdbId: media.id,
+                              mediaType: media.type,
+                            ),
+                            width: 50,
+                            height: 70,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 50,
+                              height: 70,
+                              color: Colors.grey[800],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.sourcesFor(media.title),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: media.type == 'tv' ? AppTheme.tvBadge : AppTheme.movieBadge,
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                ),
+                                child: Text(
+                                  media.type == 'tv' ? 'TV' : 'Film',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(color: Colors.grey),
                 Expanded(
                   child: FutureBuilder<List<StreamResponse>>(
                     future: _pluginService.getAllStreams(StreamRequest(
@@ -108,13 +173,24 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                         itemBuilder: (context, index) {
                           final stream = streams[index];
                           return ListTile(
-                            leading: const Icon(Icons.play_circle_fill, color: Colors.teal),
+                            leading: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accent.withAlpha(30),
+                                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                              ),
+                              child: const Icon(Icons.play_circle_fill, color: AppTheme.accent),
+                            ),
                             title: Text(stream.name, style: const TextStyle(color: Colors.white)),
-                            subtitle: Text(stream.description, style: const TextStyle(color: Colors.white70)),
+                            subtitle: Text(stream.description, style: TextStyle(color: Colors.grey[500])),
+                            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                             onTap: () {
                                Navigator.pop(context);
                                ScaffoldMessenger.of(context).showSnackBar(
-                                 SnackBar(content: Text(l10n.playingStream(stream.url))),
+                                 SnackBar(
+                                   content: Text(l10n.playingStream(stream.url)),
+                                   behavior: SnackBarBehavior.floating,
+                                 ),
                                );
                             },
                           );
@@ -123,9 +199,10 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     },
                   ),
                 ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -143,18 +220,18 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
         onPressed: () => _showAddToLibraryModal(context, media, l10n, currentStatus),
         icon: Icon(
           isInLibrary ? Icons.bookmark : Icons.bookmark_border,
-          color: isInLibrary ? Colors.tealAccent[400] : Colors.white70,
+          color: isInLibrary ? AppTheme.accent : Colors.white70,
         ),
         label: Text(
           isInLibrary ? '${l10n.inLibrary} (${_getStatusText(currentStatus!, l10n)})' : l10n.addToLibrary,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: isInLibrary ? Colors.tealAccent[400] : Colors.white70,
+            color: isInLibrary ? AppTheme.accent : Colors.white70,
           ),
         ),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: isInLibrary ? Colors.tealAccent[400]! : Colors.white38),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          side: BorderSide(color: isInLibrary ? AppTheme.accent : Colors.white38),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLarge)),
         ),
       ),
     );
@@ -177,83 +254,190 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
 
   void _showAddToLibraryModal(BuildContext context, TmdbMedia media, AppLocalizations l10n, LibraryStatus? currentStatus) {
     final statuses = [
-      (LibraryStatus.watching, l10n.statusWatching, Icons.play_circle_outline),
-      (LibraryStatus.completed, l10n.statusCompleted, Icons.check_circle_outline),
-      (LibraryStatus.onHold, l10n.statusOnHold, Icons.pause_circle_outline),
-      (LibraryStatus.dropped, l10n.statusDropped, Icons.cancel_outlined),
-      (LibraryStatus.planned, l10n.statusPlanned, Icons.schedule),
+      (LibraryStatus.watching, l10n.statusWatching, Icons.play_circle_outline, AppTheme.statusWatching),
+      (LibraryStatus.completed, l10n.statusCompleted, Icons.check_circle_outline, AppTheme.statusCompleted),
+      (LibraryStatus.onHold, l10n.statusOnHold, Icons.pause_circle_outline, AppTheme.statusOnHold),
+      (LibraryStatus.dropped, l10n.statusDropped, Icons.cancel_outlined, AppTheme.statusDropped),
+      (LibraryStatus.planned, l10n.statusPlanned, Icons.schedule, AppTheme.statusPlanned),
     ];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.grey[900],
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[700],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  l10n.selectStatus,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTheme.radiusRound)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-              ),
-              const Divider(color: Colors.grey),
-              ...statuses.map((status) => ListTile(
-                leading: Icon(
-                  status.$3,
-                  color: currentStatus == status.$1 ? Colors.tealAccent : Colors.white70,
-                ),
-                title: Text(
-                  status.$2,
-                  style: TextStyle(
-                    color: currentStatus == status.$1 ? Colors.tealAccent : Colors.white,
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                        child: Image.network(
+                          ImageService.getPosterUrl(
+                            posterPath: media.posterPath,
+                            tmdbId: media.id,
+                            mediaType: media.type,
+                          ),
+                          width: 50,
+                          height: 70,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 50,
+                            height: 70,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              media.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            if (currentStatus != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.getStatusColor(currentStatus.name).withAlpha(50),
+                                  borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
+                                ),
+                                child: Text(
+                                  _getStatusText(currentStatus, l10n),
+                                  style: TextStyle(
+                                    color: AppTheme.getStatusColor(currentStatus.name),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                trailing: currentStatus == status.$1
-                    ? const Icon(Icons.check, color: Colors.tealAccent)
-                    : null,
-                onTap: () {
-                  Navigator.pop(ctx);
-                  ref.read(libraryProvider.notifier).addToLibrary(media, status.$1);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l10n.addedToLibrary(media.title))),
-                  );
-                },
-              )),
-              if (currentStatus != null) ...[
                 const Divider(color: Colors.grey),
-                ListTile(
-                  leading: const Icon(Icons.delete_outline, color: Colors.red),
-                  title: Text(l10n.removeFromLibrary, style: const TextStyle(color: Colors.red)),
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    ref.read(libraryProvider.notifier).removeFromLibrary(media.id, media.type);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(l10n.removedFromLibrary(media.title))),
-                    );
-                  },
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    l10n.selectStatus,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: statuses.map((status) {
+                      final isSelected = currentStatus == status.$1;
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          ref.read(libraryProvider.notifier).addToLibrary(media, status.$1);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.addedToLibrary(media.title)),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: isSelected ? status.$4.withAlpha(30) : AppTheme.surfaceLight,
+                            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+                            border: Border.all(
+                              color: isSelected ? status.$4 : Colors.grey[700]!,
+                              width: isSelected ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(status.$3, color: status.$4, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                status.$2,
+                                style: TextStyle(
+                                  color: isSelected ? status.$4 : Colors.white,
+                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                ),
+                              ),
+                              if (isSelected) ...[
+                                const SizedBox(width: 8),
+                                Icon(Icons.check, color: status.$4, size: 18),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                if (currentStatus != null) ...[
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          ref.read(libraryProvider.notifier).removeFromLibrary(media.id, media.type);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.removedFromLibrary(media.title)),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.delete_outline, color: AppTheme.statusDropped),
+                        label: Text(l10n.removeFromLibrary, style: const TextStyle(color: AppTheme.statusDropped)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppTheme.statusDropped),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
               ],
-              const SizedBox(height: 8),
-            ],
+            ),
           ),
         );
       },
@@ -454,11 +638,11 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                         height: 50,
                         child: ElevatedButton.icon(
                           onPressed: () => _showStreamsModal(context, media),
-                          icon: const Icon(Icons.search, color: Colors.black),
+                          icon: const Icon(Icons.play_arrow, color: Colors.black),
                           label: Text(l10n.searchStreams, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.tealAccent[400],
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            backgroundColor: AppTheme.accent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLarge)),
                           ),
                         ),
                       ),
