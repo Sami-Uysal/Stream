@@ -23,10 +23,6 @@ class LocaleState {
 class LocaleNotifier extends Notifier<LocaleState> {
   @override
   LocaleState build() {
-    // Initial state, will be updated by loadPreferences
-    // We trigger loadPreferences after build.
-    // Ideally we should use AsyncNotifier for async initialization, 
-    // but for simple sync default + async update, this works.
     _loadPreferences();
     return const LocaleState(locale: Locale('tr', 'TR'), region: 'TR');
   }

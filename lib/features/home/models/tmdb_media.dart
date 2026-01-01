@@ -81,4 +81,34 @@ class TmdbMedia {
       cast: castList,
     );
   }
+
+  // For storing in library (SharedPreferences)
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'overview': overview,
+    'poster_path': posterPath,
+    'backdrop_path': backdropPath,
+    'release_date': releaseDate,
+    'vote_average': voteAverage,
+    'type': type,
+    'imdb_id': imdbId,
+    'runtime': runtime,
+  };
+
+  // For loading from library storage
+  factory TmdbMedia.fromStorageJson(Map<String, dynamic> json) {
+    return TmdbMedia(
+      id: json['id'],
+      title: json['title'] ?? 'Unknown Title',
+      overview: json['overview'] ?? '',
+      posterPath: json['poster_path'] ?? '',
+      backdropPath: json['backdrop_path'] ?? '',
+      releaseDate: json['release_date'] ?? '',
+      voteAverage: (json['vote_average'] as num?)?.toDouble() ?? 0.0,
+      type: json['type'] ?? 'movie',
+      imdbId: json['imdb_id'],
+      runtime: json['runtime'],
+    );
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/core/providers/locale_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -9,15 +10,16 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final localeState = ref.watch(localeProvider);
     final localeNotifier = ref.read(localeProvider.notifier);
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(l10n.settingsTitle),
       ),
       body: ListView(
         children: [
           ListTile(
-            title: const Text('Language'),
+            title: Text(l10n.settingsLanguage),
             subtitle: Text(localeState.locale.languageCode == 'tr' ? 'Türkçe' : 'English'),
             trailing: DropdownButton<String>(
               value: localeState.locale.languageCode,
@@ -33,7 +35,7 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           ListTile(
-            title: const Text('Content Region'),
+            title: Text(l10n.settingsContentRegion),
             subtitle: Text(localeState.region),
             trailing: DropdownButton<String>(
               value: localeState.region,
@@ -42,21 +44,21 @@ class SettingsScreen extends ConsumerWidget {
                   localeNotifier.setRegion(newValue);
                 }
               },
-              items: const [
-                DropdownMenuItem(value: 'TR', child: Text('Turkey')),
-                DropdownMenuItem(value: 'US', child: Text('USA')),
-                DropdownMenuItem(value: 'DE', child: Text('Germany')),
-                DropdownMenuItem(value: 'FR', child: Text('France')),
+              items: [
+                DropdownMenuItem(value: 'TR', child: Text(l10n.regionTurkey)),
+                DropdownMenuItem(value: 'US', child: Text(l10n.regionUSA)),
+                DropdownMenuItem(value: 'DE', child: Text(l10n.regionGermany)),
+                DropdownMenuItem(value: 'FR', child: Text(l10n.regionFrance)),
               ],
             ),
           ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.delete_outline, color: Colors.red),
-            title: const Text('Clear Cache', style: TextStyle(color: Colors.red)),
+            title: Text(l10n.clearCache, style: const TextStyle(color: Colors.red)),
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Cache cleared (Simulation)')),
+                SnackBar(content: Text(l10n.cacheCleared)),
               );
             },
           ),

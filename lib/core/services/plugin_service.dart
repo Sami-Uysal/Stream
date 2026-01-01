@@ -118,11 +118,6 @@ class PluginService {
   }
 
   Future<PluginManifest> _parseManifest(String jsCode) async {
-    // We create a temporary runtime to parse the manifest safely without polluting the main runtime yet
-    // Or we can just use regex if we want to be fast, but evaluating is safer for validity.
-    // For now, let's assume we can evaluate it in the main runtime but wrapped in a scope or just check the variable.
-    // A cleaner way for isolation is creating a quick temporary runtime.
-    
     final tempRuntime = getJavascriptRuntime();
     try {
       final res = await tempRuntime.evaluateAsync(jsCode);
@@ -175,47 +170,17 @@ class PluginService {
     final List<StreamResponse> allStreams = [];
     final requestJson = jsonEncode(request.toJson());
 
-    // We execute plugins sequentially or parallel? 
-    // JS Runtime is single threaded usually unless we have multiple runtimes. 
-    // Using one runtime implies sequential execution if we load all code into it.
-    // Ideally, we load the plugin code, run it, then maybe unload or just keep it if names don't collide.
-    // To avoid collision, plugins should probably be wrapped or we reload the runtime.
-    // For this prototype, let's assume plugins don't collide or we use a fresh runtime for the "Session".
-    
-    // Better approach for stability: Create a fresh runtime for this extraction session
-    // Or, simpler: Load one plugin, run, reload runtime, load next.
-    // Let's try: One runtime, but we wrap plugin code in a function scope if possible.
-    // OR: Just re-initialize the runtime for the batch.
-    
-    // Let's use the existing _runtime but be careful.
-    // Actually, loading all plugins into one global scope is risky if they use same global vars.
-    // Let's create a ephemeral runtime for each plugin execution to be safe and robust.
-    
-    // However, creating runtimes is expensive.
-    // Optimization: Plugins should be modules.
-    
-    // For this MVP: Iterate and use a new runtime for each plugin to ensure isolation.
-    
     final enabledPlugins = _plugins.where((p) => p.isEnabled).toList();
-    
-    // Run in parallel? flutter_js runtimes are isolated.
+
     final futures = enabledPlugins.map((plugin) async {
       JavascriptRuntime? runner;
       try {
         runner = getJavascriptRuntime();
-        
-        // Setup bridge for this runner
+
         runner.onMessage('http_request', (args) async {
-           // ... (same bridge logic)
-           // Duplication is bad, but unavoidable if we want isolation without complex factory
-           // For brevity, I will just copy the bridge logic or make it a static helper, 
-           // but `runner` instance is needed.
-           // Let's keep it simple: Use the main _runtime but risk collisions? 
-           // No, risk of collision is high with 3rd party scripts.
-           // I'll inline the bridge logic for now or refactor slightly.
            return _handleJsHttpRequest(args);
         });
-        
+
         runner.onMessage('console_log', (args) { if (kDebugMode) print('[${plugin.name}] $args'); });
         runner.onMessage('console_error', (args) { if (kDebugMode) print('[${plugin.name} ERROR] $args'); });
 

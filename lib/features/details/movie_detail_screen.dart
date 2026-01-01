@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/core/services/tmdb_service.dart';
 import 'package:stream/core/services/plugin_service.dart';
-import 'package:stream/core/tmdb/tmdb_constants.dart';
+import 'package:stream/core/providers/library_provider.dart';
 import 'package:stream/features/home/models/tmdb_media.dart';
 import 'package:stream/core/services/image_service.dart';
 import 'package:stream/features/plugins/models/stream_request.dart';
 import 'package:stream/features/plugins/models/stream_response.dart';
-import 'package:stream/core/providers/locale_provider.dart';
 
 class MovieDetailScreen extends ConsumerStatefulWidget {
   final TmdbMedia media;
@@ -27,15 +27,14 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
   void initState() {
     super.initState();
     _pluginService.init();
-    // Fetch full details (we need IMDb ID etc.)
     _detailsFuture = _tmdbService.getMovieDetails(
       id: widget.media.id, 
       type: widget.media.type,
-      // We'll trust the service defaults for now or could pull from provider here
     );
   }
 
   void _showStreamsModal(BuildContext context, TmdbMedia media) {
+    final l10n = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -55,7 +54,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Sources for ${media.title}',
+                    l10n.sourcesFor(media.title),
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white),
                   ),
                 ),
@@ -72,13 +71,13 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                     )),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
+                        return Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Searching all providers...', style: TextStyle(color: Colors.white70)),
+                              const CircularProgressIndicator(),
+                              const SizedBox(height: 16),
+                              Text(l10n.searchingProviders, style: const TextStyle(color: Colors.white70)),
                             ],
                           ),
                         );
@@ -97,7 +96,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                             children: [
                               const Icon(Icons.search_off, size: 48, color: Colors.white54),
                               const SizedBox(height: 16),
-                              const Text('No streams found.', style: TextStyle(color: Colors.white70)),
+                              Text(l10n.noStreamsFound, style: const TextStyle(color: Colors.white70)),
                             ],
                           ),
                         );
@@ -115,7 +114,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                             onTap: () {
                                Navigator.pop(context);
                                ScaffoldMessenger.of(context).showSnackBar(
-                                 SnackBar(content: Text('Playing: ${stream.url}')),
+                                 SnackBar(content: Text(l10n.playingStream(stream.url))),
                                );
                             },
                           );
@@ -132,19 +131,146 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
     );
   }
 
+  Widget _buildLibraryButton(BuildContext context, TmdbMedia media, AppLocalizations l10n) {
+    final libraryState = ref.watch(libraryProvider);
+    final isInLibrary = libraryState.isInLibrary(media.id, media.type);
+    final currentStatus = ref.read(libraryProvider.notifier).getStatus(media.id, media.type);
+
+    return SizedBox(
+      width: double.infinity,
+      height: 50,
+      child: OutlinedButton.icon(
+        onPressed: () => _showAddToLibraryModal(context, media, l10n, currentStatus),
+        icon: Icon(
+          isInLibrary ? Icons.bookmark : Icons.bookmark_border,
+          color: isInLibrary ? Colors.tealAccent[400] : Colors.white70,
+        ),
+        label: Text(
+          isInLibrary ? '${l10n.inLibrary} (${_getStatusText(currentStatus!, l10n)})' : l10n.addToLibrary,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: isInLibrary ? Colors.tealAccent[400] : Colors.white70,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: isInLibrary ? Colors.tealAccent[400]! : Colors.white38),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
+
+  String _getStatusText(LibraryStatus status, AppLocalizations l10n) {
+    switch (status) {
+      case LibraryStatus.watching:
+        return l10n.statusWatching;
+      case LibraryStatus.completed:
+        return l10n.statusCompleted;
+      case LibraryStatus.onHold:
+        return l10n.statusOnHold;
+      case LibraryStatus.dropped:
+        return l10n.statusDropped;
+      case LibraryStatus.planned:
+        return l10n.statusPlanned;
+    }
+  }
+
+  void _showAddToLibraryModal(BuildContext context, TmdbMedia media, AppLocalizations l10n, LibraryStatus? currentStatus) {
+    final statuses = [
+      (LibraryStatus.watching, l10n.statusWatching, Icons.play_circle_outline),
+      (LibraryStatus.completed, l10n.statusCompleted, Icons.check_circle_outline),
+      (LibraryStatus.onHold, l10n.statusOnHold, Icons.pause_circle_outline),
+      (LibraryStatus.dropped, l10n.statusDropped, Icons.cancel_outlined),
+      (LibraryStatus.planned, l10n.statusPlanned, Icons.schedule),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[700],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  l10n.selectStatus,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const Divider(color: Colors.grey),
+              ...statuses.map((status) => ListTile(
+                leading: Icon(
+                  status.$3,
+                  color: currentStatus == status.$1 ? Colors.tealAccent : Colors.white70,
+                ),
+                title: Text(
+                  status.$2,
+                  style: TextStyle(
+                    color: currentStatus == status.$1 ? Colors.tealAccent : Colors.white,
+                  ),
+                ),
+                trailing: currentStatus == status.$1
+                    ? const Icon(Icons.check, color: Colors.tealAccent)
+                    : null,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  ref.read(libraryProvider.notifier).addToLibrary(media, status.$1);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(l10n.addedToLibrary(media.title))),
+                  );
+                },
+              )),
+              if (currentStatus != null) ...[
+                const Divider(color: Colors.grey),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(l10n.removeFromLibrary, style: const TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ref.read(libraryProvider.notifier).removeFromLibrary(media.id, media.type);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(l10n.removedFromLibrary(media.title))),
+                    );
+                  },
+                ),
+              ],
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Re-fetch if locale changes? 
-    // Ideally we would watch localeProvider and trigger a new fetch, 
-    // but for now let's just use the initial load or pull locale from provider for the API call if we were dynamic.
-    
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: FutureBuilder<TmdbMedia?>(
         future: _detailsFuture,
         builder: (context, snapshot) {
-          final media = snapshot.data ?? widget.media; // Fallback to passed data while loading
-          
+          final media = snapshot.data ?? widget.media;
+
           return CustomScrollView(
             slivers: [
               SliverAppBar(
@@ -199,7 +325,11 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(8),
                               child: Image.network(
-                                ImageService.getPosterUrl(media.posterPath),
+                                ImageService.getPosterUrl(
+                                  posterPath: media.posterPath,
+                                  tmdbId: media.id,
+                                  mediaType: media.type,
+                                ),
                                 width: 120,
                                 height: 180,
                                 fit: BoxFit.cover,
@@ -228,7 +358,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                                     if (media.runtime != null) ...[
                                       const SizedBox(width: 16),
                                       Text(
-                                        '${media.runtime} min',
+                                        l10n.runtimeMinutes(media.runtime!),
                                         style: const TextStyle(color: Colors.white70),
                                       ),
                                     ],
@@ -264,7 +394,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Overview',
+                        l10n.overview,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
@@ -275,7 +405,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                       const SizedBox(height: 24),
                       if (media.cast != null && media.cast!.isNotEmpty) ...[
                         Text(
-                          'Cast',
+                          l10n.cast,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 12),
@@ -293,7 +423,7 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                                     CircleAvatar(
                                       radius: 30,
                                       backgroundImage: actor.profilePath != null
-                                          ? NetworkImage(ImageService.getPosterUrl(actor.profilePath!))
+                                          ? NetworkImage(ImageService.getProfileUrl(actor.profilePath!))
                                           : null,
                                       backgroundColor: Colors.grey[800],
                                       child: actor.profilePath == null ? const Icon(Icons.person, color: Colors.white54) : null,
@@ -317,13 +447,15 @@ class _MovieDetailScreenState extends ConsumerState<MovieDetailScreen> {
                         ),
                       ],
                       const SizedBox(height: 32),
+                      _buildLibraryButton(context, media, l10n),
+                      const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
                         height: 50,
                         child: ElevatedButton.icon(
                           onPressed: () => _showStreamsModal(context, media),
                           icon: const Icon(Icons.search, color: Colors.black),
-                          label: const Text('SEARCH STREAMS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+                          label: Text(l10n.searchStreams, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.tealAccent[400],
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -29,4 +29,13 @@ class ImageService {
     }
     return 'https://image.tmdb.org/t/p/w1280/$backdropPath';
   }
+
+  static String getProfileUrl(String? profilePath) {
+    if (profilePath == null || profilePath.isEmpty) return '';
+    
+    if (profilePath.startsWith('/')) {
+      return '$_tmdbBaseUrl$profilePath';
+    }
+    return '$_tmdbBaseUrl/$profilePath';
+  }
 }

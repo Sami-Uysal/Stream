@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/features/home/home_screen.dart';
+import 'package:stream/features/library/library_screen.dart';
 import 'package:stream/features/settings/settings_screen.dart';
 import 'package:stream/core/theme/app_theme.dart';
 import 'package:stream/core/providers/locale_provider.dart';
@@ -16,8 +19,6 @@ class StreamApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // We can watch the locale here to rebuild the app on language change
-    // For now just passing it to material app if we had localization delegates set up
     final localeState = ref.watch(localeProvider);
 
     return MaterialApp(
@@ -26,8 +27,13 @@ class StreamApp extends ConsumerWidget {
       theme: AppTheme.darkTheme,
       home: const MainScaffold(),
       locale: localeState.locale,
-      // supportedLocales: const [Locale('en', 'US'), Locale('tr', 'TR')],
-      // localizationsDelegates: ... (If we added intl)
+      supportedLocales: const [Locale('en', 'US'), Locale('tr', 'TR')],
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }
@@ -48,15 +54,19 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
   }
 
-  static const List<Widget> _pages = <Widget>[
-    HomeScreen(),
-    Center(child: Text('Search')),
-    Center(child: Text('Library')),
-    SettingsScreen(),
-  ];
+  List<Widget> _buildPages(AppLocalizations l10n) {
+    return <Widget>[
+      const HomeScreen(),
+      Center(child: Text(l10n.navSearch)),
+      const LibraryScreen(),
+      const SettingsScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final pages = _buildPages(l10n);
 
     final width = MediaQuery.of(context).size.width;
     final bool useNavigationRail = width >= 800;
@@ -69,31 +79,31 @@ class _MainScaffoldState extends State<MainScaffold> {
               selectedIndex: _selectedIndex,
               onDestinationSelected: _onDestinationSelected,
               labelType: NavigationRailLabelType.all,
-              destinations: const [
+              destinations: [
                 NavigationRailDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home),
-                  label: Text('Home'),
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home),
+                  label: Text(l10n.navHome),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.search),
-                  label: Text('Search'),
+                  icon: const Icon(Icons.search),
+                  label: Text(l10n.navSearch),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.video_library_outlined),
-                  selectedIcon: Icon(Icons.video_library),
-                  label: Text('Library'),
+                  icon: const Icon(Icons.video_library_outlined),
+                  selectedIcon: const Icon(Icons.video_library),
+                  label: Text(l10n.navLibrary),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings),
-                  label: Text('Settings'),
+                  icon: const Icon(Icons.settings_outlined),
+                  selectedIcon: const Icon(Icons.settings),
+                  label: Text(l10n.navSettings),
                 ),
               ],
             ),
             const VerticalDivider(thickness: 1, width: 1),
             Expanded(
-              child: _pages[_selectedIndex],
+              child: pages[_selectedIndex],
             ),
           ],
         ),
@@ -101,29 +111,29 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
 
     return Scaffold(
-      body: _pages[_selectedIndex],
+      body: pages[_selectedIndex],
       bottomNavigationBar: NavigationBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: _onDestinationSelected,
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home),
+            label: l10n.navHome,
           ),
           NavigationDestination(
-            icon: Icon(Icons.search),
-            label: 'Search',
+            icon: const Icon(Icons.search),
+            label: l10n.navSearch,
           ),
           NavigationDestination(
-            icon: Icon(Icons.video_library_outlined),
-            selectedIcon: Icon(Icons.video_library),
-            label: 'Library',
+            icon: const Icon(Icons.video_library_outlined),
+            selectedIcon: const Icon(Icons.video_library),
+            label: l10n.navLibrary,
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings),
+            label: l10n.navSettings,
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/core/services/tmdb_service.dart';
 import 'package:stream/core/services/plugin_service.dart';
 import 'package:stream/core/tmdb/tmdb_constants.dart';
@@ -85,9 +86,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     });
 
+    final l10n = AppLocalizations.of(context)!;
+    final isDesktop = MediaQuery.of(context).size.width >= 800;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Stream'),
+        title: Text(l10n.appTitle),
+        centerTitle: isDesktop,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -101,17 +106,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
       body: CustomScrollView(
         slivers: [
-          _buildSectionTitle('Trending'),
-          _buildHorizontalList(_trendingFuture),
+          _buildSectionTitle(l10n.sectionTrending),
+          _buildHorizontalList(_trendingFuture, l10n),
 
           _buildSectionTitle('Netflix'),
-          _buildHorizontalList(_netflixFuture),
+          _buildHorizontalList(_netflixFuture, l10n),
           
           _buildSectionTitle('Disney+'),
-          _buildHorizontalList(_disneyFuture),
+          _buildHorizontalList(_disneyFuture, l10n),
           
           _buildSectionTitle('Amazon Prime Video'),
-          _buildHorizontalList(_primeFuture),
+          _buildHorizontalList(_primeFuture, l10n),
           
           const SliverToBoxAdapter(child: SizedBox(height: 50)),
         ],
@@ -134,7 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHorizontalList(Future<List<TmdbMedia>> future) {
+  Widget _buildHorizontalList(Future<List<TmdbMedia>> future, AppLocalizations l10n) {
     return SliverToBoxAdapter(
       child: SizedBox(
         height: 250, 
@@ -145,10 +150,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
+              return Center(child: Text(l10n.errorGeneric(snapshot.error.toString())));
             }
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
-              return const Center(child: Text('No content found'));
+              return Center(child: Text(l10n.noContentFound));
             }
 
             final items = snapshot.data!;

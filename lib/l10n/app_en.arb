@@ -1,0 +1,237 @@
+{
+  "@@locale": "en",
+  
+  "appTitle": "Stream",
+  "@appTitle": {
+    "description": "The app title shown in app bar"
+  },
+
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Navigation label for Home"
+  },
+
+  "navSearch": "Search",
+  "@navSearch": {
+    "description": "Navigation label for Search"
+  },
+
+  "navLibrary": "Library",
+  "@navLibrary": {
+    "description": "Navigation label for Library"
+  },
+
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Navigation label for Settings"
+  },
+
+  "sectionTrending": "Trending",
+  "@sectionTrending": {
+    "description": "Section title for trending content"
+  },
+
+  "errorGeneric": "Error: {error}",
+  "@errorGeneric": {
+    "description": "Generic error message",
+    "placeholders": {
+      "error": {
+        "type": "String",
+        "example": "Network error"
+      }
+    }
+  },
+
+  "noContentFound": "No content found",
+  "@noContentFound": {
+    "description": "Message when no content is available"
+  },
+
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Settings screen title"
+  },
+
+  "settingsLanguage": "Language",
+  "@settingsLanguage": {
+    "description": "Language setting label"
+  },
+
+  "settingsContentRegion": "Content Region",
+  "@settingsContentRegion": {
+    "description": "Content region setting label"
+  },
+
+  "regionTurkey": "Turkey",
+  "@regionTurkey": {
+    "description": "Turkey region name"
+  },
+
+  "regionUSA": "USA",
+  "@regionUSA": {
+    "description": "USA region name"
+  },
+
+  "regionGermany": "Germany",
+  "@regionGermany": {
+    "description": "Germany region name"
+  },
+
+  "regionFrance": "France",
+  "@regionFrance": {
+    "description": "France region name"
+  },
+
+  "clearCache": "Clear Cache",
+  "@clearCache": {
+    "description": "Clear cache button label"
+  },
+
+  "cacheCleared": "Cache cleared (Simulation)",
+  "@cacheCleared": {
+    "description": "Cache cleared confirmation message"
+  },
+
+  "sourcesFor": "Sources for {title}",
+  "@sourcesFor": {
+    "description": "Modal title showing sources for a media",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Movie Name"
+      }
+    }
+  },
+
+  "searchingProviders": "Searching all providers...",
+  "@searchingProviders": {
+    "description": "Loading message while searching streams"
+  },
+
+  "noStreamsFound": "No streams found.",
+  "@noStreamsFound": {
+    "description": "Message when no streams are available"
+  },
+
+  "playingStream": "Playing: {url}",
+  "@playingStream": {
+    "description": "Message when starting to play a stream",
+    "placeholders": {
+      "url": {
+        "type": "String",
+        "example": "https://example.com/stream.mp4"
+      }
+    }
+  },
+
+  "runtimeMinutes": "{minutes} min",
+  "@runtimeMinutes": {
+    "description": "Runtime in minutes",
+    "placeholders": {
+      "minutes": {
+        "type": "int",
+        "example": "120"
+      }
+    }
+  },
+
+  "overview": "Overview",
+  "@overview": {
+    "description": "Overview section title"
+  },
+
+  "cast": "Cast",
+  "@cast": {
+    "description": "Cast section title"
+  },
+
+  "searchStreams": "SEARCH STREAMS",
+  "@searchStreams": {
+    "description": "Search streams button label"
+  },
+
+  "addToLibrary": "Add to Library",
+  "@addToLibrary": {
+    "description": "Button to add media to library"
+  },
+
+  "removeFromLibrary": "Remove from Library",
+  "@removeFromLibrary": {
+    "description": "Button to remove media from library"
+  },
+
+  "addedToLibrary": "{title} added to library",
+  "@addedToLibrary": {
+    "description": "Confirmation when media is added",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+
+  "removedFromLibrary": "{title} removed from library",
+  "@removedFromLibrary": {
+    "description": "Confirmation when media is removed",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+
+  "libraryEmpty": "Your library is empty",
+  "@libraryEmpty": {
+    "description": "Message when library has no items"
+  },
+
+  "libraryEmptyHint": "Add movies and series from the detail page",
+  "@libraryEmptyHint": {
+    "description": "Hint for empty library"
+  },
+
+  "noItemsInCategory": "No items in this category",
+  "@noItemsInCategory": {
+    "description": "Message when category is empty"
+  },
+
+  "statusWatching": "Watching",
+  "@statusWatching": {
+    "description": "Watching status label"
+  },
+
+  "statusCompleted": "Completed",
+  "@statusCompleted": {
+    "description": "Completed status label"
+  },
+
+  "statusOnHold": "On Hold",
+  "@statusOnHold": {
+    "description": "On hold status label"
+  },
+
+  "statusDropped": "Dropped",
+  "@statusDropped": {
+    "description": "Dropped status label"
+  },
+
+  "statusPlanned": "Planned",
+  "@statusPlanned": {
+    "description": "Planned status label"
+  },
+
+  "selectStatus": "Select Status",
+  "@selectStatus": {
+    "description": "Title for status selection"
+  },
+
+  "changeStatus": "Change Status",
+  "@changeStatus": {
+    "description": "Button to change status"
+  },
+
+  "inLibrary": "In Library",
+  "@inLibrary": {
+    "description": "Label when item is in library"
+  }
+}
