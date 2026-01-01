@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/core/providers/library_provider.dart';
+import 'package:stream/core/providers/auth_provider.dart';
 import 'package:stream/core/services/image_service.dart';
+import 'package:stream/core/theme/app_theme.dart';
 import 'package:stream/features/details/movie_detail_screen.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
@@ -38,62 +40,205 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     return items;
   }
 
+  Future<void> _onRefresh() async {
+    final authState = ref.read(authProvider);
+    final syncService = authState.syncService;
+    if (syncService == null) return;
+
+    final libraryNotifier = ref.read(libraryProvider.notifier);
+    libraryNotifier.setSyncService(syncService);
+    await libraryNotifier.syncFromRemote();
+  }
+
+  String _formatLastSyncTime(DateTime? time) {
+    if (time == null) return 'Hiç senkronize edilmedi';
+    final now = DateTime.now();
+    final diff = now.difference(time);
+    
+    if (diff.inMinutes < 1) return 'Az önce senkronize edildi';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} dk önce senkronize edildi';
+    if (diff.inHours < 24) return '${diff.inHours} saat önce senkronize edildi';
+    return '${diff.inDays} gün önce senkronize edildi';
+  }
+
+  Widget _buildSyncProgressIndicator(SyncProgress progress) {
+    String phaseText;
+    switch (progress.phase) {
+      case SyncPhase.fetching:
+        phaseText = 'Uzak sunucudan alınıyor...';
+        break;
+      case SyncPhase.enriching:
+        phaseText = 'Detaylar yükleniyor';
+        break;
+      case SyncPhase.saving:
+        phaseText = 'Kaydediliyor...';
+        break;
+      case SyncPhase.completed:
+        phaseText = 'Tamamlandı';
+        break;
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[900],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[800]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  phaseText,
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+              ),
+              if (progress.total > 0)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(
+                    '${progress.current}/${progress.total}',
+                    style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                  ),
+                ),
+              if (progress.phase == SyncPhase.enriching)
+                GestureDetector(
+                  onTap: () => ref.read(libraryProvider.notifier).cancelSync(),
+                  child: Icon(Icons.close, size: 18, color: Colors.grey[500]),
+                ),
+            ],
+          ),
+          if (progress.total > 0) ...[
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: progress.percentage,
+              backgroundColor: Colors.grey[800],
+              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accent),
+            ),
+            if (progress.currentTitle != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                progress.currentTitle!,
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final libraryState = ref.watch(libraryProvider);
+    final authState = ref.watch(authProvider);
     final filteredItems = _getFilteredItems(libraryState);
     final watchingItems = libraryState.getByStatus(LibraryStatus.watching);
+    final hasSyncEnabled = authState.hasSyncEnabled;
 
     return Scaffold(
       body: libraryState.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : CustomScrollView(
-              slivers: [
-                SliverAppBar(
-                  floating: true,
-                  title: Text(l10n.navLibrary),
-                  actions: [
-                    IconButton(
-                      icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
-                      onPressed: () => setState(() => _isGridView = !_isGridView),
-                    ),
-                  ],
-                ),
+          : RefreshIndicator(
+              onRefresh: _onRefresh,
+              notificationPredicate: (_) => hasSyncEnabled,
+              child: CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    floating: true,
+                    title: Text(l10n.navLibrary),
+                    actions: [
+                      if (libraryState.isSyncing)
+                        const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      else if (hasSyncEnabled)
+                        IconButton(
+                          icon: const Icon(Icons.sync),
+                          onPressed: _onRefresh,
+                          tooltip: _formatLastSyncTime(libraryState.lastSyncTime),
+                        ),
+                      IconButton(
+                        icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),
+                        onPressed: () => setState(() => _isGridView = !_isGridView),
+                      ),
+                    ],
+                  ),
 
-                if (watchingItems.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
-                      child: Text(
-                        'Kaldığın Yerden Devam Et',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                  if (hasSyncEnabled && libraryState.lastSyncTime != null && !libraryState.isSyncing)
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.cloud_done, size: 14, color: Colors.grey[500]),
+                            const SizedBox(width: 6),
+                            Text(
+                              _formatLastSyncTime(libraryState.lastSyncTime),
+                              style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
+
+                  if (libraryState.isSyncing && libraryState.syncProgress != null)
+                    SliverToBoxAdapter(
+                      child: _buildSyncProgressIndicator(libraryState.syncProgress!),
+                    ),
+
+                  if (watchingItems.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+                        child: Text(
+                          'Kaldığın Yerden Devam Et',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: _buildContinueWatchingSection(watchingItems, l10n),
+                    ),
+                  ],
+
                   SliverToBoxAdapter(
-                    child: _buildContinueWatchingSection(watchingItems, l10n),
+                    child: _buildSearchAndFilters(libraryState, l10n),
                   ),
+
+                  if (filteredItems.isEmpty)
+                    SliverFillRemaining(
+                      child: _buildEmptyState(l10n),
+                    )
+                  else if (_isGridView)
+                    _buildGridContent(filteredItems, l10n)
+                  else
+                    _buildListContent(filteredItems, l10n),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
                 ],
-
-                SliverToBoxAdapter(
-                  child: _buildSearchAndFilters(libraryState, l10n),
-                ),
-
-                if (filteredItems.isEmpty)
-                  SliverFillRemaining(
-                    child: _buildEmptyState(l10n),
-                  )
-                else if (_isGridView)
-                  _buildGridContent(filteredItems, l10n)
-                else
-                  _buildListContent(filteredItems, l10n),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
+              ),
             ),
     );
   }
@@ -142,18 +287,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                       color: Colors.grey[800],
                       child: const Icon(Icons.movie, size: 40, color: Colors.white38),
                     ),
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withAlpha(220),
-                    ],
-                  ),
-                ),
-              ),
               Positioned(
                 bottom: 12,
                 left: 12,
@@ -414,24 +547,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     ),
                   ),
                   Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    height: 80,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withAlpha(180),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
                     top: 8,
                     left: 8,
                     child: Container(
@@ -464,24 +579,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                         color: Colors.white,
                         size: 14,
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 8,
-                    left: 8,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 14),
-                        const SizedBox(width: 4),
-                        Text(
-                          media.voteAverage.toStringAsFixed(1),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
                   if (item.status == LibraryStatus.watching)
@@ -621,17 +718,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        media.voteAverage.toStringAsFixed(1),
-                        style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                      ),
-                      if (media.releaseDate.isNotEmpty) ...[
-                        const SizedBox(width: 12),
+                  if (media.releaseDate.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
                         Icon(Icons.calendar_today, color: Colors.grey[600], size: 12),
                         const SizedBox(width: 4),
                         Text(
@@ -639,8 +729,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           style: TextStyle(color: Colors.grey[400], fontSize: 12),
                         ),
                       ],
-                    ],
-                  ),
+                    ),
+                  ],
                 ],
               ),
             ),

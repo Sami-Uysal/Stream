@@ -3,7 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:stream/core/providers/locale_provider.dart';
 import 'package:stream/core/providers/library_provider.dart';
+import 'package:stream/core/providers/auth_provider.dart';
+import 'package:stream/core/services/trakt_auth_service.dart';
+import 'package:stream/core/services/simkl_auth_service.dart';
+import 'package:stream/core/services/sync_service.dart';
 import 'package:stream/core/theme/app_theme.dart';
+
+class _SyncingNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+  void set(bool value) => state = value;
+}
+
+final _syncingProvider = NotifierProvider<_SyncingNotifier, bool>(_SyncingNotifier.new);
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -13,6 +25,7 @@ class SettingsScreen extends ConsumerWidget {
     final localeState = ref.watch(localeProvider);
     final localeNotifier = ref.read(localeProvider.notifier);
     final libraryState = ref.watch(libraryProvider);
+    final authState = ref.watch(authProvider);
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -26,6 +39,14 @@ class SettingsScreen extends ConsumerWidget {
           // App Info Section
           SliverToBoxAdapter(
             child: _buildAppInfoCard(context, libraryState),
+          ),
+          
+          // Accounts Section (Trakt & Simkl)
+          SliverToBoxAdapter(
+            child: _buildSectionHeader(context, 'Hesaplar', Icons.account_circle),
+          ),
+          SliverToBoxAdapter(
+            child: _buildAccountsSection(context, ref, authState),
           ),
           
           // Language & Region Section
@@ -238,6 +259,360 @@ class SettingsScreen extends ConsumerWidget {
               fontWeight: FontWeight.bold,
               letterSpacing: 1,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountsSection(BuildContext context, WidgetRef ref, AuthState authState) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+        border: Border.all(color: Colors.grey[850]!),
+      ),
+      child: Column(
+        children: [
+          // Trakt Account
+          _buildAccountTile(
+            context: context,
+            ref: ref,
+            serviceName: 'Trakt',
+            serviceIcon: Icons.movie_filter,
+            iconColor: const Color(0xFFED1C24), // Trakt red
+            isConnected: authState.isTraktConnected,
+            username: authState.traktUser?.username,
+            isLoading: authState.isLoading,
+            isConfigured: TraktAuthService.isConfigured,
+            onConnect: () => ref.read(authProvider.notifier).connectTrakt(),
+            onDisconnect: () => _showDisconnectDialog(
+              context, 
+              ref, 
+              'Trakt', 
+              () => ref.read(authProvider.notifier).disconnectTrakt(),
+            ),
+          ),
+          const Divider(height: 1, indent: 56),
+          // Simkl Account
+          _buildAccountTile(
+            context: context,
+            ref: ref,
+            serviceName: 'Simkl',
+            serviceIcon: Icons.play_circle_filled,
+            iconColor: const Color(0xFF0099FF),
+            isConnected: authState.isSimklConnected,
+            username: authState.simklUser?.username,
+            isLoading: authState.isLoading,
+            isConfigured: SimklAuthService.isConfigured,
+            onConnect: () => ref.read(authProvider.notifier).connectSimkl(),
+            onDisconnect: () => _showDisconnectDialog(
+              context, 
+              ref, 
+              'Simkl', 
+              () => ref.read(authProvider.notifier).disconnectSimkl(),
+            ),
+          ),
+          if (authState.isTraktConnected || authState.isSimklConnected) ...[
+            const Divider(height: 1, indent: 16, endIndent: 16),
+            _buildSyncProviderSelector(context, ref, authState),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncProviderSelector(BuildContext context, WidgetRef ref, AuthState authState) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.sync, color: Colors.grey[400], size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Senkronizasyon',
+                style: TextStyle(
+                  color: Colors.grey[400],
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          _buildSyncOption(
+            context: context,
+            ref: ref,
+            title: 'Kapalı',
+            subtitle: 'Yerel kütüphane',
+            provider: SyncProvider.none,
+            currentProvider: authState.activeSyncProvider,
+            enabled: true,
+          ),
+          if (authState.isTraktConnected)
+            _buildSyncOption(
+              context: context,
+              ref: ref,
+              title: 'Trakt',
+              subtitle: '@${authState.traktUser?.username}',
+              provider: SyncProvider.trakt,
+              currentProvider: authState.activeSyncProvider,
+              enabled: true,
+              color: const Color(0xFFED1C24),
+            ),
+          if (authState.isSimklConnected)
+            _buildSyncOption(
+              context: context,
+              ref: ref,
+              title: 'Simkl',
+              subtitle: '@${authState.simklUser?.username}',
+              provider: SyncProvider.simkl,
+              currentProvider: authState.activeSyncProvider,
+              enabled: true,
+              color: const Color(0xFF0099FF),
+            ),
+          if (authState.hasSyncEnabled) ...[
+            const SizedBox(height: 12),
+            _buildSyncNowButton(context, ref, authState),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSyncNowButton(BuildContext context, WidgetRef ref, AuthState authState) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final isSyncing = ref.watch(_syncingProvider);
+        return SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: isSyncing ? null : () => _performSync(context, ref, authState),
+            icon: isSyncing 
+                ? const SizedBox(
+                    width: 16, 
+                    height: 16, 
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.sync, size: 18),
+            label: Text(isSyncing ? 'Senkronize ediliyor...' : 'Şimdi Senkronize Et'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppTheme.accent,
+              side: BorderSide(color: AppTheme.accent.withAlpha(100)),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _performSync(BuildContext context, WidgetRef ref, AuthState authState) async {
+    final syncService = authState.syncService;
+    if (syncService == null) return;
+
+    ref.read(_syncingProvider.notifier).set(true);
+
+    try {
+      final libraryNotifier = ref.read(libraryProvider.notifier);
+      libraryNotifier.setSyncService(syncService);
+      
+      await libraryNotifier.processPendingSync();
+      
+      await libraryNotifier.syncFromRemote();
+
+      if (context.mounted) {
+        final libraryState = ref.read(libraryProvider);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Senkronizasyon tamamlandı: ${libraryState.items.length} içerik',
+            ),
+            backgroundColor: Colors.green[700],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Senkronizasyon hatası: $e'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+      }
+    } finally {
+      ref.read(_syncingProvider.notifier).set(false);
+    }
+  }
+
+  Widget _buildSyncOption({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String title,
+    required String subtitle,
+    required SyncProvider provider,
+    required SyncProvider currentProvider,
+    required bool enabled,
+    Color? color,
+  }) {
+    final isSelected = provider == currentProvider;
+    return InkWell(
+      onTap: enabled ? () => ref.read(authProvider.notifier).setActiveSyncProvider(provider) : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: isSelected ? (color ?? AppTheme.accent) : Colors.grey[600],
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: enabled ? Colors.white : Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.grey[500],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected && provider != SyncProvider.none)
+              Icon(Icons.check_circle, color: color ?? AppTheme.accent, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountTile({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String serviceName,
+    required IconData serviceIcon,
+    required Color iconColor,
+    required bool isConnected,
+    required String? username,
+    required bool isLoading,
+    required bool isConfigured,
+    required VoidCallback onConnect,
+    required VoidCallback onDisconnect,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: iconColor.withAlpha(30),
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+        ),
+        child: Icon(serviceIcon, color: iconColor, size: 20),
+      ),
+      title: Text(
+        serviceName,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      subtitle: Text(
+        isConnected 
+            ? '@$username' 
+            : (isConfigured ? 'Bağlı değil' : 'API yapılandırılmamış'),
+        style: TextStyle(
+          color: isConnected ? AppTheme.statusCompleted : Colors.grey[500],
+          fontSize: 12,
+        ),
+      ),
+      trailing: isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : isConnected
+              ? TextButton(
+                  onPressed: onDisconnect,
+                  child: const Text(
+                    'Bağlantıyı Kes',
+                    style: TextStyle(color: AppTheme.statusDropped, fontSize: 12),
+                  ),
+                )
+              : isConfigured
+                  ? TextButton(
+                      onPressed: onConnect,
+                      child: Text(
+                        'Bağlan',
+                        style: TextStyle(color: iconColor, fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : Icon(Icons.warning_amber, color: Colors.grey[600], size: 20),
+    );
+  }
+
+  void _showDisconnectDialog(BuildContext context, WidgetRef ref, String serviceName, VoidCallback onConfirm) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTheme.radiusXLarge),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.statusOnHold.withAlpha(30),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+              ),
+              child: const Icon(Icons.link_off, color: AppTheme.statusOnHold, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text('$serviceName Bağlantısını Kes', style: const TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          '$serviceName hesabınızın bağlantısını kesmek istediğinize emin misiniz? Senkronizasyon verileri etkilenmeyecek.',
+          style: const TextStyle(color: Colors.grey),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onConfirm();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$serviceName bağlantısı kesildi'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.statusOnHold,
+            ),
+            child: const Text('Bağlantıyı Kes'),
           ),
         ],
       ),

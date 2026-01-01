@@ -111,4 +111,7 @@ class TmdbMedia {
       runtime: json['runtime'],
     );
   }
+
+  bool get isMovie => type == 'movie';
+  bool get isTv => type == 'tv';
 }

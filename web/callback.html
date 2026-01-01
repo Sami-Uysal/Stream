@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication Complete - Stream</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+    .container {
+      text-align: center;
+      padding: 40px;
+      background: rgba(30, 30, 30, 0.9);
+      border-radius: 16px;
+      border: 1px solid rgba(100, 255, 218, 0.2);
+      max-width: 400px;
+      margin: 20px;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(100, 255, 218, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+    .icon svg {
+      width: 32px;
+      height: 32px;
+      fill: #64ffda;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+    p {
+      color: #888;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid rgba(100, 255, 218, 0.3);
+      border-top-color: #64ffda;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 20px auto 0;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .error {
+      color: #ff6b6b;
+      margin-top: 16px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">
+      <svg viewBox="0 0 24 24">
+        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+      </svg>
+    </div>
+    <h1>Authentication Complete</h1>
+    <p>You have successfully logged in. This window will close automatically.</p>
+    <div class="spinner"></div>
+    <p class="error" id="error">If this window doesn't close, please close it manually and return to the app.</p>
+  </div>
+
+  <script>
+    (function() {
+      const callbackUrl = window.location.href;
+      if (window.opener) {
+        try {
+          window.opener.postMessage(callbackUrl, '*');
+          setTimeout(function() {
+            window.close();
+          }, 1000);
+        } catch (e) {
+          console.error('Error posting message:', e);
+          document.getElementById('error').style.display = 'block';
+        }
+      } else {
+        document.getElementById('error').style.display = 'block';
+        document.querySelector('.spinner').style.display = 'none';
+        document.querySelector('p:not(.error)').textContent = 'Authentication complete. Please close this window and return to the app.';
+      }
+      
+      setTimeout(function() {
+        try {
+          window.close();
+        } catch (e) {
+          document.getElementById('error').style.display = 'block';
+        }
+      }, 3000);
+    })();
+  </script>
+</body>
+</html>

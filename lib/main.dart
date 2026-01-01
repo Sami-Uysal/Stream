@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,6 +10,8 @@ import 'package:stream/features/library/library_screen.dart';
 import 'package:stream/features/settings/settings_screen.dart';
 import 'package:stream/core/theme/app_theme.dart';
 import 'package:stream/core/providers/locale_provider.dart';
+import 'package:stream/core/providers/auth_provider.dart';
+import 'package:stream/core/providers/library_provider.dart';
 
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
@@ -39,11 +42,11 @@ class StreamApp extends ConsumerWidget {
   }
 }
 
-class MainScaffold extends StatefulWidget {
+class MainScaffold extends ConsumerStatefulWidget {
   const MainScaffold({super.key});
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
 class _NavItem {
@@ -58,8 +61,52 @@ class _NavItem {
   });
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _selectedIndex = 0;
+  bool _syncInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAutoSync();
+  }
+
+  Future<void> _initializeAutoSync() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (!mounted) return;
+
+    final authState = ref.read(authProvider);
+    if (authState.isLoading) {
+      ref.listenManual(authProvider, (_, next) {
+        if (!next.isLoading && !_syncInitialized) {
+          _performAutoSync(next);
+        }
+      });
+    } else {
+      _performAutoSync(authState);
+    }
+  }
+
+  Future<void> _performAutoSync(AuthState authState) async {
+    if (_syncInitialized) return;
+    _syncInitialized = true;
+
+    final syncService = authState.syncService;
+    if (syncService == null) return;
+
+    try {
+      debugPrint('Auto-sync: Starting...');
+      final libraryNotifier = ref.read(libraryProvider.notifier);
+      libraryNotifier.setSyncService(syncService);
+      
+      await libraryNotifier.processPendingSync();
+      await libraryNotifier.syncFromRemote();
+      
+      debugPrint('Auto-sync: Complete');
+    } catch (e) {
+      debugPrint('Auto-sync error: $e');
+    }
+  }
 
   void _onDestinationSelected(int index) {
     setState(() {

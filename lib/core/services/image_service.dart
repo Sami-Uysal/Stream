@@ -7,18 +7,25 @@ class ImageService {
   static String? get rpdbKey => dotenv.env['RPDB_API_KEY'];
 
   static String getPosterUrl({required String? posterPath, required int tmdbId, String? mediaType}) {
-    if (posterPath == null || posterPath.isEmpty) {
-      return ''; 
+    if (rpdbKey != null && rpdbKey!.isNotEmpty && tmdbId > 0) {
+      return '$_rpdbBaseUrl/$rpdbKey/tmdb/poster-default/$tmdbId.jpg';
     }
 
-    if (rpdbKey != null && rpdbKey!.isNotEmpty) {
-      return '$_rpdbBaseUrl/$rpdbKey/tmdb/poster-default/$tmdbId.jpg';
+    if (posterPath == null || posterPath.isEmpty) {
+      return '';
     }
 
     if (posterPath.startsWith('/')) {
       return '$_tmdbBaseUrl$posterPath';
     }
     return '$_tmdbBaseUrl/$posterPath';
+  }
+
+  static bool hasValidPoster({String? posterPath, int? tmdbId}) {
+    if (rpdbKey != null && rpdbKey!.isNotEmpty && tmdbId != null && tmdbId > 0) {
+      return true;
+    }
+    return posterPath != null && posterPath.isNotEmpty;
   }
 
   static String getBackdropUrl(String? backdropPath) {
