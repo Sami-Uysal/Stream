@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:stream/features/home/home_screen.dart';
 import 'core/theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
+  await dotenv.load(fileName: ".env");
   runApp(const StreamApp());
 }
 
@@ -36,7 +39,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   }
 
   static const List<Widget> _pages = <Widget>[
-    Center(child: Text('Home (Catalogs)')),
+    HomeScreen(),
     Center(child: Text('Search')),
     Center(child: Text('Library')),
     Center(child: Text('Settings')),
@@ -44,7 +47,7 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    // Basic responsive layout
+
     final width = MediaQuery.of(context).size.width;
     final bool useNavigationRail = width >= 800;
 
