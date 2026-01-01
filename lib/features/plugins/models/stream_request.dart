@@ -1,6 +1,6 @@
 class StreamRequest {
-  final String type; // 'movie' or 'series'
-  final Map<String, dynamic> ids; // e.g., {'imdb': 'tt123', 'tmdb': 550}
+  final String type;
+  final Map<String, dynamic> ids; 
   final String title;
   final int? year;
   final int? season;

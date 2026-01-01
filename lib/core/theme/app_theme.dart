@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static final Color _seedColor = const Color(0xFFD0BCFF); // Soft Purple accent
-  static final Color _background = const Color(0xFF0A0A0A); // Almost black
-  static final Color _surface = const Color(0xFF1E1E1E); // Dark Grey
+  static final Color _seedColor = const Color(0xFFD0BCFF); 
+  static final Color _background = const Color(0xFF0A0A0A); 
+  static final Color _surface = const Color(0xFF1E1E1E); 
 
   static ThemeData get darkTheme {
     return ThemeData(

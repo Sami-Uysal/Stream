@@ -1,6 +1,6 @@
 class StreamResponse {
-  final String name; // e.g., "1080p HDR"
-  final String description; // e.g., "Provider: YTS"
+  final String name;
+  final String description; 
   final String url;
   final Map<String, String>? headers;
   final List<Subtitle>? subtitles;
