@@ -8,16 +8,18 @@ class TmdbService {
 
   TmdbService() {
     _dio.options.baseUrl = TmdbConstants.baseUrl;
+    // Workaround for cloudfront IP direct access
+    _dio.options.headers['Host'] = 'api.themoviedb.org';
     _dio.options.queryParameters = {
       'api_key': TmdbConstants.apiKey,
-      'language': 'en-US',
+      'language': TmdbConstants.defaultLanguage,
     };
   }
 
   Future<List<TmdbMedia>> getPlatformCatalog({
     required int providerId,
     String type = 'movie',
-    String region = 'TR',
+    String region = TmdbConstants.defaultRegion,
     int page = 1,
   }) async {
     try {

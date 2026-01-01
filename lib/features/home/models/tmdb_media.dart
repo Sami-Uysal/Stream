@@ -5,6 +5,7 @@ class TmdbMedia {
   final String? backdropPath;
   final double voteAverage;
   final String mediaType;
+  final String releaseDate;
 
   TmdbMedia({
     required this.id,
@@ -13,6 +14,7 @@ class TmdbMedia {
     this.backdropPath,
     required this.voteAverage,
     required this.mediaType,
+    required this.releaseDate,
   });
 
   factory TmdbMedia.fromJson(Map<String, dynamic> json, String type) {
@@ -23,6 +25,9 @@ class TmdbMedia {
       backdropPath: json['backdrop_path'] as String?,
       voteAverage: (json['vote_average'] as num?)?.toDouble() ?? 0.0,
       mediaType: type,
+      releaseDate: (json['release_date'] ?? json['first_air_date'] ?? '') as String,
     );
   }
+  
+  String get type => mediaType;
 }
